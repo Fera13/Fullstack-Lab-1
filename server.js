@@ -29,4 +29,26 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.get("/albums", async (req, res) => {});
+app.get("/albums", async (req, res) => {
+  await album
+    .find()
+    .then((result) => {
+      res.json(result);
+    })
+    .catch((error) => console.error("Error in the connection", error));
+});
+
+app.post("/albums", async (req, res) => {
+  try {
+    const info = req.body;
+    const newAlbum = new album({
+      title: info.title,
+      artist: info.artist,
+      year: info.year,
+    });
+    await newAlbum.save();
+  } catch (error) {
+    console.log(error);
+    res.sendStatus(409);
+  }
+});
