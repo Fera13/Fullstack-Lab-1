@@ -1,8 +1,12 @@
 const express = require("express");
 const app = express();
-require("dotenv").config();
 const cors = require("cors");
 const path = require("path");
+const mongoose = require("mongoose");
+const album = require("./Albums");
+const port = process.env.PORT;
+const uri = process.env.URI;
+require("dotenv").config();
 
 app.use(express.json({ strict: false }));
 app.use(cors({ origin: "*" }));
@@ -13,12 +17,16 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/", (req, res) => {
-  res.redirect("/albums");
-});
+mongoose
+  .connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    app.listen(3000);
+    console.log("MongoDB is connected and the server is listening");
+  })
+  .catch((error) => console.error("Error in the connection", error));
 
-app.get("/albums", (req, res) => {
+app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(3000);
+app.get("/albums", async (req, res) => {});
