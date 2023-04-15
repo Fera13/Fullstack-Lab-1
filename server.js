@@ -1,27 +1,21 @@
 const express = require("express");
 const app = express();
-const cors = require("cors");
 const path = require("path");
+const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const album = require("./Albums");
-const port = process.env.PORT;
-const uri = process.env.URI;
 require("dotenv").config();
 
-app.use(express.json({ strict: false }));
-app.use(cors({ origin: "*" }));
-app.use(express.json());
+const port = process.env.PORT || 3000;
+const uri = process.env.URI;
 
-app.use((req, res, next) => {
-  console.log(`${req.method}  ${req.url}  `, req.body);
-  next();
-});
+app.use(express.json());
+app.use(bodyParser.json());
 
 mongoose
   .connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => {
-    app.listen(3000);
-    console.log("MongoDB is connected and the server is listening");
+    console.log("MongoDB is connected");
   })
   .catch((error) => console.error("Error in the connection", error));
 
@@ -29,16 +23,20 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.get("/albums", async (req, res) => {
-  await album
-    .find()
-    .then((result) => {
-      res.json(result);
-    })
-    .catch((error) => console.error("Error in the connection", error));
+// Serve static files
+app.use(express.static(path.join(__dirname, "public")));
+
+app.get("/api/albums", async (req, res) => {
+  try {
+    const albums = await album.find();
+    console.log(albums);
+    res.json(albums);
+  } catch (error) {
+    res.status(500).json("Error in getting the albums");
+  }
 });
 
-app.post("/albums", async (req, res) => {
+app.post("/api/albums", async (req, res) => {
   try {
     const info = req.body;
     const newAlbum = new album({
@@ -47,8 +45,11 @@ app.post("/albums", async (req, res) => {
       year: info.year,
     });
     await newAlbum.save();
+    res.status(201).send(newAlbum);
   } catch (error) {
     console.log(error);
     res.sendStatus(409);
   }
 });
+
+app.listen(port);
