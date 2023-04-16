@@ -19,12 +19,12 @@ mongoose
   })
   .catch((error) => console.error("Error in the connection", error));
 
+// Serve static files
+app.use(express.static(path.join(__dirname, "public")));
+
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
-
-// Serve static files
-app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/api/albums", async (req, res) => {
   try {
@@ -49,6 +49,32 @@ app.post("/api/albums", async (req, res) => {
   } catch (error) {
     console.log(error);
     res.sendStatus(409);
+  }
+});
+
+app.put("/api/albums/:id", async (req, res) => {
+  try {
+    var id = req.params.id;
+    const albumToUpdate = req.body;
+    const updateAndReturn = await album
+      .findByIdAndUpdate(id, albumToUpdate, { new: true })
+      .then(() => {
+        console.log("Updated");
+      })
+      .catch((error) => {
+        res.status(404).send({ status: "error", message: error });
+      });
+    res.json(updateAndReturn);
+  } catch (error) {}
+});
+
+app.delete("/api/albums/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    await album.findByIdAndDelete(id);
+    res.sendStatus(200);
+  } catch (error) {
+    res.status(404).send({ status: "error", message: error });
   }
 });
 

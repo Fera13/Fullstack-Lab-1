@@ -1,5 +1,13 @@
+const myTable = document.getElementById("myTable");
+
 async function showAlbums() {
   try {
+    const myTableBody = document.querySelector(".rows");
+    myTableBody.innerHTML = "";
+    const oldRows = document.querySelectorAll("#myTable .rows tr");
+    oldRows.forEach((row) => {
+      row.remove();
+    });
     await fetch(`http://localhost:3000/api/albums`, {
       method: "GET",
     })
@@ -7,9 +15,6 @@ async function showAlbums() {
         return response.json();
       })
       .then((albums) => {
-        const myTable = document.getElementById("myTable");
-        const myTableBody = document.querySelector(".rows");
-
         for (const album of albums) {
           const row = document.createElement("tr");
           row.setAttribute("id", album._id);
@@ -30,25 +35,40 @@ async function showAlbums() {
         }
         myTable.appendChild(myTableBody);
       });
-    document.querySelector(".delete-btn").addEventListener("click", () => {
-      handleDelete();
-    });
-    document.querySelector(".update-btn").addEventListener("click", () => {
-      handleUpdate();
-    });
-    document
-      .querySelector(".show-details-btn")
-      .addEventListener("click", () => {
+    myTable.addEventListener("click", (event) => {
+      if (event.target.classList.contains("delete-btn")) {
+        const rowId = event.target.closest("tr").id;
+        handleDelete(rowId);
+      } else if (event.target.classList.contains("update-btn")) {
+        handleUpdate();
+      } else if (event.target.classList.contains("show-details-btn")) {
         handleShowingDetails();
-      });
+      }
+    });
   } catch (error) {
     console.log(error);
   }
 }
 showAlbums();
 
-async function handleDelete() {}
+async function handleDelete(rowId) {
+  try {
+    const response = await fetch(`http://localhost:3000/api/albums/${rowId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    });
 
-async function handleUpdate() {}
+    if (response.status === 404) {
+      const errorSpace = document.querySelector(".error-space");
+      errorSpace.textContent = "Failed to delete. The album wasn't found.";
+      return;
+    }
 
-async function handleShowingDetails() {}
+    await showAlbums();
+
+    const errorSpace = document.querySelector(".error-space");
+    errorSpace.textContent = "Album deleted successfully!";
+  } catch (error) {
+    console.error(error);
+  }
+}
