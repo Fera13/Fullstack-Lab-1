@@ -38,6 +38,10 @@ app.get("/api/albums", async (req, res) => {
 app.post("/api/albums", async (req, res) => {
   try {
     const info = req.body;
+    const existingAlbum = await album.findOne({ title: info.title });
+    if (existingAlbum) {
+      return res.status(409).send({ message: "Album already exists" });
+    }
     const newAlbum = new album({
       title: info.title,
       artist: info.artist,
@@ -47,7 +51,7 @@ app.post("/api/albums", async (req, res) => {
     res.status(201).send(newAlbum);
   } catch (error) {
     console.log(error);
-    res.sendStatus(409);
+    res.sendStatus(500);
   }
 });
 
@@ -55,15 +59,15 @@ app.put("/api/albums/:id", async (req, res) => {
   try {
     var id = req.params.id;
     const albumToUpdate = req.body;
-    const updateAndReturn = await album
-      .findByIdAndUpdate(id, albumToUpdate, { new: true })
+    await album
+      .findByIdAndUpdate(id, albumToUpdate)
       .then(() => {
+        res.sendStatus(200);
         console.log("Updated");
       })
       .catch((error) => {
         res.status(404).send({ status: "error", message: error });
       });
-    res.status(200).json(updateAndReturn);
   } catch (error) {}
 });
 

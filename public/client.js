@@ -1,10 +1,12 @@
 const myTable = document.getElementById("myTable");
+const myTableBody = document.querySelector(".rows");
+const isEmpty = (str) => !str.trim().length;
+const errorSpace = document.querySelector(".error-space");
 
 async function showAlbums() {
   try {
     const updateArea = document.querySelector(".update-space");
     updateArea.innerHTML = "";
-    const myTableBody = document.querySelector(".rows");
     myTableBody.innerHTML = "";
     const oldRows = document.querySelectorAll("#myTable .rows tr");
     oldRows.forEach((row) => {
@@ -18,23 +20,7 @@ async function showAlbums() {
       })
       .then((albums) => {
         for (const album of albums) {
-          const row = document.createElement("tr");
-          row.setAttribute("id", album._id);
-          const content = `
-              <td class="title-cell">${album.title}</td>
-              <td class="btn-cell">
-                <button class="update-btn"> Update Album </button>
-              </td>
-              <td class="btn-cell">
-                <button class="delete-btn"> Delete Album </button>
-              </td>
-              <td class="btn-cell">
-                <button class="show-details-btn"> Show details </button>
-              </td>
-              <td class="show-details"></td>`;
-
-          row.innerHTML = content;
-          myTableBody.appendChild(row);
+          addAlbumRow(album);
         }
         myTable.appendChild(myTableBody);
       });
@@ -48,7 +34,7 @@ async function showAlbums() {
         const titleText = event.target
           .closest("tr")
           .querySelector(".title-cell").textContent;
-        handleShowingDetails(titleText);
+        handleShowingDetails(event, titleText);
       }
     });
   } catch (error) {
@@ -59,26 +45,26 @@ showAlbums();
 
 async function handleDelete(rowId) {
   try {
+    errorSpace.innerHTML = "";
     const response = await fetch(`http://localhost:3000/api/albums/${rowId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
     });
 
     if (response.status === 404) {
-      const errorSpace = document.querySelector(".error-space");
       errorSpace.textContent = "Failed to delete. The album wasn't found.";
       return;
     }
 
     await showAlbums();
 
-    const errorSpace = document.querySelector(".error-space");
     errorSpace.textContent = "Album deleted successfully!";
   } catch (error) {
     console.error(error);
   }
 }
 async function handleUpdate(rowId) {
+  errorSpace.innerHTML = "";
   const updateParent = document.querySelector(".update-space");
   updateParent.innerHTML = `
     <label>Updated title</label>
@@ -90,12 +76,24 @@ async function handleUpdate(rowId) {
     <button id="update">Update the album</button>`;
 
   const updateButton = document.getElementById("update");
+  const upTitleText = document.querySelector("#up-titleText");
+  const upArtistText = document.querySelector("#up-artistText");
+  const upYearText = document.querySelector("#up-yearText");
   updateButton.addEventListener("click", () => {
+    if (
+      isEmpty(upTitleText.value) ||
+      isEmpty(upArtistText.value) ||
+      isEmpty(upYearText.value)
+    ) {
+      errorSpace.textContent = "Please fill out all fields.";
+      return;
+    }
     doTheUpdate(rowId);
   });
 }
 
 async function doTheUpdate(rowId) {
+  errorSpace.innerHTML = "";
   const newTitle = document.querySelector("#up-titleText").value;
   const newArtist = document.querySelector("#up-artistText").value;
   const newYear = document.querySelector("#up-yearText").value;
@@ -111,35 +109,33 @@ async function doTheUpdate(rowId) {
     });
 
     if (response.status === 404) {
-      const errorSpace = document.querySelector(".error-space");
       errorSpace.textContent = "Failed to update. The album wasn't found.";
       return;
     }
-
-    await showAlbums();
-
-    const errorSpace = document.querySelector(".error-space");
     errorSpace.textContent = "Album updated successfully!";
+    await showAlbums();
   } catch (error) {
     console.error(error);
   }
 }
 
-async function handleShowingDetails(title) {
+async function handleShowingDetails(event, title) {
   try {
     const response = await fetch(`http://localhost:3000/api/albums/${title}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     });
-    const result = response.json();
+    const result = await response.json();
     const albums = Promise.resolve(result);
 
     albums
       .then((text) => {
-        document.querySelector(".show-details").innerHTML = text
+        const row = event.target.closest("tr");
+        const showDetails = row.querySelector(".show-details");
+        showDetails.innerHTML = text
           .map(
             (album) =>
-              `Title: ${album.title}, Artist: ${album.artist}, Year: ${album.year}`
+              `ID: ${album._id} Title: ${album.title}, Artist: ${album.artist}, Year: ${album.year}`
           )
           .join(" ");
       })
@@ -147,7 +143,6 @@ async function handleShowingDetails(title) {
         console.log(err);
       });
     if (response.status === 404) {
-      const errorSpace = document.querySelector(".error-space");
       errorSpace.textContent =
         "Failed to show details. The album wasn't found.";
       return;
@@ -157,6 +152,67 @@ async function handleShowingDetails(title) {
   }
 }
 
+const create = document.querySelector("#createAlbumBtn");
+create.addEventListener("click", () => {
+  const titleText = document.querySelector("#titleText");
+  const artistText = document.querySelector("#artistText");
+  const yearText = document.querySelector("#yearText");
+  // Check if any input fields are empty
+  if (
+    isEmpty(titleText.value) ||
+    isEmpty(artistText.value) ||
+    isEmpty(yearText.value)
+  ) {
+    errorSpace.textContent = "Please fill out all fields.";
+    return;
+  }
+
+  // Send a POST request to create a new album
+  fetch("http://localhost:3000/api/albums", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: titleText.value,
+      artist: artistText.value,
+      year: yearText.value,
+    }),
+  })
+    .then((response) => {
+      console.log("Response:", response);
+      return response.json();
+    })
+    .then((newAlbum) => {
+      // Clear the input fields and error message
+      titleText.value = "";
+      artistText.value = "";
+      yearText.value = "";
+      errorSpace.textContent = "";
+
+      // Add the new album to the table
+      addAlbumRow(newAlbum);
+    })
+    .catch((error) => console.error("Error creating album:", error));
+});
+
+async function addAlbumRow(album) {
+  const row = document.createElement("tr");
+  row.setAttribute("id", album._id);
+  const content = `
+              <td class="title-cell">${album.title}</td>
+              <td class="btn-cell">
+                <button class="update-btn"> Update Album </button>
+              </td>
+              <td class="btn-cell">
+                <button class="delete-btn"> Delete Album </button>
+              </td>
+              <td class="btn-cell">
+                <button class="show-details-btn"> Show details </button>
+              </td>
+              <td class="show-details"></td>`;
+
+  row.innerHTML = content;
+  myTableBody.appendChild(row);
+}
 /*try {
   document.addEventListener("DOMContentLoaded", () => {
     // Select the necessary elements from the HTML
@@ -206,115 +262,4 @@ async function handleShowingDetails(title) {
           addAlbumRow(newAlbum);
         })
         .catch((error) => console.error("Error creating album:", error));
-    };
-
-    // Add a click event listener to the create album button
-    createAlbumBtn.addEventListener("click", handleSubmit);
-  });
-} catch (error) {
-  console.error("Something went wrong:", error);
-}
-
-const addAlbumRow = (album) => {
-  // Select the table body element
-  const tableBody = document.querySelector("#myTable tbody");
-
-  // Create a new table row element
-  const row = document.createElement("tr");
-
-  // Create a table cell for the album title
-  const titleCell = document.createElement("td");
-  titleCell.textContent = album.title;
-  row.appendChild(titleCell);
-
-  // Create a table cell for the actions
-  const actionsCell = document.createElement("td");
-
-  // Create the view button
-  const viewCell = document.createElement("td");
-  const viewButton = document.createElement("button");
-  viewButton.textContent = "View";
-  viewButton.addEventListener("click", () => {
-    // Create the accordion element
-    const accordion = document.createElement("div");
-    accordion.classList.add("accordion");
-
-    // Create the accordion header element
-    const accordionHeader = document.createElement("div");
-    accordionHeader.classList.add("accordion-header");
-    accordionHeader.textContent = album.title;
-    accordion.appendChild(accordionHeader);
-
-    // Create the accordion body element
-    const accordionBody = document.createElement("div");
-    accordionBody.classList.add("accordion-body");
-    console.log(album.id);
-    accordionBody.innerHTML = `
-        <p>ID: ${album.id}</p>
-        <p>Title: ${album.title}</p>
-        <p>Artist: ${album.artist}</p>
-        <p>Year: ${album.year}</p>
-      `;
-    accordion.appendChild(accordionBody);
-
-    // Remove any existing accordions
-    const existingAccordions = document.querySelectorAll(".accordion");
-    existingAccordions.forEach((existingAccordion) => {
-      existingAccordion.remove();
-    });
-
-    // Add the accordion to the table
-    viewCell.appendChild(accordion);
-  });
-  actionsCell.appendChild(viewButton);
-
-  // Create the update button
-  const updateButton = document.createElement("button");
-  updateButton.textContent = "Update";
-  updateButton.addEventListener("click", () => {
-    // Prompt the user for new album details
-    const newTitle = prompt("Enter a new title:", album.title);
-    const newArtist = prompt("Enter a new artist:", album.artist);
-    const newYear = prompt("Enter a new year:", album.year);
-
-    // Send a PUT request to update the album
-    fetch(`http://localhost:3000/api/albums/${album.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: newTitle,
-        artist: newArtist,
-        year: newYear,
-      }),
-    })
-      .then((response) => response.json())
-      .then((updatedAlbum) => {
-        // Update the album row in the table
-        titleCell.textContent = updatedAlbum.title;
-        album.title = updatedAlbum.title;
-        album.artist = updatedAlbum.artist;
-        album.year = updatedAlbum.year;
-      });
-  });
-  actionsCell.appendChild(updateButton);
-
-  // Create the delete button
-  const deleteButton = document.createElement("button");
-  deleteButton.textContent = "Delete";
-  deleteButton.addEventListener("click", () => {
-    fetch(`http://localhost:3000/api/albums/${album.id}`, {
-      method: "DELETE",
-    })
-      .then(() => {
-        // refresh the table after deletion
-        fetchAlbums();
-      })
-      .catch((err) => console.error(err));
-  });
-  actionsCell.appendChild(deleteButton);
-
-  row.appendChild(actionsCell);
-
-  // Append the new row to the table body
-  tableBody.appendChild(row);
-};*/
+    };*/
