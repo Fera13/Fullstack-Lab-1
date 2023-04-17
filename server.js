@@ -19,7 +19,6 @@ mongoose
   })
   .catch((error) => console.error("Error in the connection", error));
 
-// Serve static files
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/", (req, res) => {
@@ -74,7 +73,18 @@ app.delete("/api/albums/:id", async (req, res) => {
     await album.findByIdAndDelete(id);
     res.sendStatus(200);
   } catch (error) {
-    res.status(404).send({ status: "error", message: error });
+    res.status(404);
+  }
+});
+
+app.get("/api/albums/:title", async (req, res) => {
+  try {
+    const title = req.params.title;
+    await album.find({ title: title }).then((result) => {
+      res.status(200).json(result);
+    });
+  } catch (error) {
+    res.status(404);
   }
 });
 

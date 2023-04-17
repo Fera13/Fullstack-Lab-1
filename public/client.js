@@ -30,7 +30,8 @@ async function showAlbums() {
               </td>
               <td class="btn-cell">
                 <button class="show-details-btn"> Show details </button>
-              </td>`;
+              </td>
+              <td class="show-details"></td>`;
 
           row.innerHTML = content;
           myTableBody.appendChild(row);
@@ -44,7 +45,10 @@ async function showAlbums() {
       } else if (event.target.classList.contains("update-btn")) {
         handleUpdate(rowId);
       } else if (event.target.classList.contains("show-details-btn")) {
-        handleShowingDetails();
+        const titleText = event.target
+          .closest("tr")
+          .querySelector(".title-cell").textContent;
+        handleShowingDetails(titleText);
       }
     });
   } catch (error) {
@@ -121,7 +125,37 @@ async function doTheUpdate(rowId) {
   }
 }
 
-async function handleShowingDetails() {}
+async function handleShowingDetails(title) {
+  try {
+    const response = await fetch(`http://localhost:3000/api/albums/${title}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+    const result = response.json();
+    const albums = Promise.resolve(result);
+
+    albums
+      .then((text) => {
+        document.querySelector(".show-details").innerHTML = text
+          .map(
+            (album) =>
+              `Title: ${album.title}, Artist: ${album.artist}, Year: ${album.year}`
+          )
+          .join(" ");
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+    if (response.status === 404) {
+      const errorSpace = document.querySelector(".error-space");
+      errorSpace.textContent =
+        "Failed to show details. The album wasn't found.";
+      return;
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
 
 /*try {
   document.addEventListener("DOMContentLoaded", () => {
