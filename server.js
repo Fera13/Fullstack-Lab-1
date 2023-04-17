@@ -64,7 +64,7 @@ app.put("/api/albums/:id", async (req, res) => {
       .catch((error) => {
         res.status(404).send({ status: "error", message: error });
       });
-    res.json(updateAndReturn);
+    res.status(200).json(updateAndReturn);
   } catch (error) {}
 });
 
